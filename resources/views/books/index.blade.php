@@ -5,7 +5,7 @@
 
     <form method="GET" action="{{route('books.index')}}" class="mb-4 flex items-center space-x-2">
         <input type="text" name="title" placeholder="Search by title"
-        value="{{ request('title') }}" class="input h-10">
+               value="{{ request('title') }}" class="input h-10">
         <input type="hidden" name="filter" value="{{request('filter')}}">
         <button type="submit" class="btn h-10">Search</button>
         <a href="{{ route('books.index') }}" class="btn h-10">Clear</a>
@@ -36,15 +36,25 @@
                     <div
                         class="flex flex-wrap items-center justify-between">
                         <div class="w-full flex-grow sm:w-auto">
-                            <a href="{{ route('books.show', $book) }}" class="book-title">{{$book->title}}</a>
-                            <span class="book-author">{{$book->author}}</span>
+                            <a href="{{ route('books.show', ['book' => $book['id']])}}"
+                               class="book-title">{{$book['volumeInfo']['title']}}</a>
+                            <span class="book-author">{{$book['volumeInfo']['authors'][0]}}</span>
                         </div>
                         <div>
                             <div class="book-rating">
-                                <x-star-rating :rating="$book->reviews_avg_rating"/>
+                                @if(isset($book['volumeInfo']['averageRating']))
+                                    <x-star-rating :rating="$book['volumeInfo']['averageRating']"/>
+                                @else
+                                    <span class="text-red-500">Rating not available</span>
+                                @endif
                             </div>
                             <div class="book-review-count">
-                                out of {{$book->reviews_count}} {{ Str::plural('review', $book->reviews_count) }}
+                                @if(isset($book['volumeInfo']['ratingsCount']))
+                                    out
+                                    of {{ $book['volumeInfo']['ratingsCount'] }} {{ Str::plural('rating', $book['volumeInfo']['ratingsCount']) }}
+                                @else
+                                    Rating count not available
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -57,7 +67,7 @@
                     <a href="{{route('books.index')}}" class="reset-link">Reset criteria</a>
                 </div>
             </li>
-       @endforelse
+        @endforelse
     </ul>
     @if($books->count())
         <nav class="mt-4">

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Review>
@@ -18,6 +19,7 @@ class ReviewFactory extends Factory
     {
         return [
             'book_id'=>null,
+            'user_id'=>3,
             'review'=>fake()->paragraph,
             'rating'=>fake()->numberBetween(1, 5),
             'created_at'=>fake()->dateTimeBetween('-2 years'),

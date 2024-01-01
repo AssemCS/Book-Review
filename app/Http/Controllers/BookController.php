@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Book;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BookController extends Controller
 {
@@ -21,82 +22,48 @@ class BookController extends Controller
             fn($query, $title) => $query->title($title)
         );
 
-        $books = match($filter){
-            'popular_last_month'=>$books->popularLastMonth(),
-            'popular_last_6months'=>$books->popularLast6Months(),
-            'highest_rated_last_month'=>$books->highestRatedLastMonth(),
-            'highest_rated_last_6months'=>$books->highestRatedLast6Months(),
-            default=>$books->latest()->withAvgRating()->withReviewsCount()
+        $books = match ($filter) {
+            'popular_last_month' => $books->popularLastMonth(),
+            'popular_last_6months' => $books->popularLast6Months(),
+            'highest_rated_last_month' => $books->highestRatedLastMonth(),
+            'highest_rated_last_6months' => $books->highestRatedLast6Months(),
+            default => $books->latest()->withAvgRating()->withReviewsCount()
         };
 
-        $cacheKey = 'books:'.$filter.':'.$title;
-        $books =
-//            cache()->
-//            remember($cacheKey,
-//                3600,
-//                fn()=>
-                $books->paginate(10);
-//    );
-        return view('books.index', ['books'=>$books]);
-    }
+        $query = $request->filled('query') ? $request->input('query') : 'laravel';
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+        $response = Http::get('https://www.googleapis.com/books/v1/volumes', [
+            'q' => $query,
+        ]);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
+        $books = collect($response->json()['items'] ?? []);
+
+        // Paginate the collection
+        $perPage = 10;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $pagedData = $books->forPage($currentPage, $perPage);
+
+        $books = new LengthAwarePaginator($pagedData, $books->count(), $perPage);
+
+        return view('books.index', compact('books'));
+
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(int $id)
+    public function show(Book $book)
     {
-
-        $cacheKey = 'book:'.$id;
+        $cacheKey = 'book:' .(string) $book['id'];
         $book = cache()->remember(
             $cacheKey,
             3600,
-            fn()=>
-            Book::with([
-                'reviews'=>fn($query) => $query->latest()
-                ])->withAvgRating()->withReviewsCount()->findOrFail($id));
+            fn() => Book::with([
+                'reviews' => fn($query) => $query->latest()
+            ])->withAvgRating()->withReviewsCount()->findOrFail($book['id']));
 
 
-        return view('books.show', ['book'=>$book]
+        return view('books.show', ['book' => $book]
         );
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }
